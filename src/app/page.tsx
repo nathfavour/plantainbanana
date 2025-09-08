@@ -162,7 +162,12 @@ export default function Home() {
         }));
       }, { timeoutMs: Number(process.env.NEXT_PUBLIC_GEMINI_TIMEOUT ?? 180000) });
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const isAbort = (e as any)?.name === "AbortError" || /abort|timeout/i.test(String((e as any)?.message ?? e));
+      const message = isAbort
+        ? "Generation timed out. Started the next task if queued."
+        : e instanceof Error
+          ? e.message
+          : String(e);
       setError(`Error: ${message}`);
       console.error(e);
     }
