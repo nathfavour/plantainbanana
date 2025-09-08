@@ -94,7 +94,7 @@ export default function Home() {
   const [filters, setFilters] = useState(initialFilterValues);
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const { busy, tryRunExclusive } = useTaskGate();
+  const { busy, runExclusive } = useTaskGate();
 
   useEffect(() => {
     setFilters(initialFilterValues);
@@ -131,39 +131,36 @@ export default function Home() {
     setError(null);
     setFilters(initialFilterValues);
 
-    const started = tryRunExclusive(async () => {
-      const form = new FormData();
-      form.append("image", currentImage.file);
-      form.append("prompt", prompt);
-
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        body: form,
-      });
-
-      if (!res.ok) {
-        let msg = `${res.status} ${res.statusText}`;
-        try {
-          const err = await res.json();
-          if (err?.error) msg = err.error;
-        } catch {}
-        throw new Error(msg);
-      }
-
-      const json = (await res.json()) as { data: string; mimeType: string };
-      const url = `data:${json.mimeType};base64,${json.data}`;
-      const file = dataURLtoFile(url, `generated-${currentImage.file.name}`);
-
-      setGeneratedImages((prev) => ({
-        ...prev,
-        [selectedImageIndex!]: { url, file },
-      }));
-    });
-
-    if (!started) return;
-
     try {
-      await started;
+      await runExclusive(async (signal) => {
+        const form = new FormData();
+        form.append("image", currentImage.file);
+        form.append("prompt", prompt);
+
+        const res = await fetch("/api/generate", {
+          method: "POST",
+          body: form,
+          signal,
+        });
+
+        if (!res.ok) {
+          let msg = `${res.status} ${res.statusText}`;
+          try {
+            const err = await res.json();
+            if (err?.error) msg = err.error;
+          } catch {}
+          throw new Error(msg);
+        }
+
+        const json = (await res.json()) as { data: string; mimeType: string };
+        const url = `data:${json.mimeType};base64,${json.data}`;
+        const file = dataURLtoFile(url, `generated-${currentImage.file.name}`);
+
+        setGeneratedImages((prev) => ({
+          ...prev,
+          [selectedImageIndex!]: { url, file },
+        }));
+      }, { timeoutMs: Number(process.env.NEXT_PUBLIC_GEMINI_TIMEOUT ?? 180000) });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setError(`Error: ${message}`);
