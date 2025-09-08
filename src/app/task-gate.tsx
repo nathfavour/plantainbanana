@@ -2,14 +2,16 @@
 
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 
+export type TaskGateOptions = { timeoutMs?: number; label?: string };
+
 export type TaskGate = {
   busy: boolean;
   // Queues the task to run exclusively. Returns the task result.
-  runExclusive<T>(fn: () => Promise<T>): Promise<T>;
+  runExclusive<T>(fn: (signal: AbortSignal) => Promise<T>, options?: TaskGateOptions): Promise<T>;
   // Attempts to run now; if busy, returns null and does not queue.
-  tryRunExclusive<T>(fn: () => Promise<T>): Promise<T> | null;
+  tryRunExclusive<T>(fn: (signal: AbortSignal) => Promise<T>, options?: TaskGateOptions): Promise<T> | null;
   // Clears any queued tasks (does not cancel the currently running one).
-  cancelAll(): void;
+  cancelAll(reason?: any): void;
 };
 
 const TaskGateContext = createContext<TaskGate | undefined>(undefined);
@@ -45,23 +47,30 @@ export function TaskGateProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const runExclusive = useCallback(async <T,>(fn: () => Promise<T>): Promise<T> => {
+  const runExclusive = useCallback(async <T,>(fn: (signal: AbortSignal) => Promise<T>, options?: TaskGateOptions): Promise<T> => {
+    const timeoutMs = options?.timeoutMs ?? Number(process.env.NEXT_PUBLIC_GEMINI_TIMEOUT ?? 180000);
     await acquire();
+    const controller = new AbortController();
+    let timeoutId: any;
     try {
-      return await fn();
+      if (timeoutMs && Number.isFinite(timeoutMs) && timeoutMs > 0) {
+        timeoutId = setTimeout(() => controller.abort(new Error("TaskGate timeout")), timeoutMs);
+      }
+      return await fn(controller.signal);
     } finally {
+      if (timeoutId) clearTimeout(timeoutId);
       release();
     }
   }, [acquire, release]);
 
-  const tryRunExclusive = useCallback(<T,>(fn: () => Promise<T>): Promise<T> | null => {
+  const tryRunExclusive = useCallback(<T,>(fn: (signal: AbortSignal) => Promise<T>, options?: TaskGateOptions): Promise<T> | null => {
     if (locked.current) return null;
-    return runExclusive(fn);
+    return runExclusive(fn, options);
   }, [runExclusive]);
 
-  const cancelAll = useCallback(() => {
+  const cancelAll = useCallback((reason?: any) => {
     waiters.current = [];
-    // Do not change busy here; current task will release and set appropriately
+    // Reason is ignored here, as queued tasks haven't started yet.
   }, []);
 
   const value = useMemo<TaskGate>(() => ({ busy, runExclusive, tryRunExclusive, cancelAll }), [busy, runExclusive, tryRunExclusive, cancelAll]);
