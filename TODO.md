@@ -80,25 +80,40 @@ Env: NEXT_PUBLIC_GEMINI_TIMEOUT=180000
   - [ ] `SessionState`: `{ userId?: string; displayName?: string; role: 'guest'|'editor'|'admin' }`
   - [ ] Actions: `login(mock)`, `logout()`, `setRole(role)`
   - [ ] Persistence: `localStorage['pb.session']`
-- [ ] Project store
-  - [ ] `ProjectState`: `{ id: string; name: string; canvas: { w: number; h: number; dpi: number }; layers: Layer[] }`
-  - [ ] Actions: `newProject`, `load(id)`, `save()`, `renameLayer`, `addLayer`, `deleteLayer`
-  - [ ] Persistence: `localStorage['pb.project.<id>']`; `recent` list
-  - [ ] Sync stub: `POST/GET /api/projects` placeholder wiring (Phase 6)
+- [ ] Project store (expanded)
+  - [ ] Types
+    - [ ] `Layer`: `{ id: string; name: string; visible: boolean }`
+    - [ ] `ProjectState`: `{ id: string; version: 1; name: string; canvas: { w: number; h: number; dpi: number }; layers: Layer[]; updatedAt: number; dirty: boolean }`
+    - [ ] ID generation via `crypto.randomUUID()`; clamp names to 1–60 chars
+  - [ ] Actions
+    - [ ] `newProject({ name, w, h, dpi })` → creates base layer `{ id:'base', name:'Background', visible:true }`, sets `dirty=true`
+    - [ ] `load(id)` → loads from storage, sets `dirty=false`
+    - [ ] `save()` → writes to storage, updates `updatedAt`, sets `dirty=false`, updates recents
+    - [ ] `renameLayer(id, name)` → trims/clamps; enforces unique layer names per project
+    - [ ] `addLayer(name?)` → appends layer with unique default name; visible by default
+    - [ ] `deleteLayer(id)` → prevents deleting sole base layer
+    - [ ] (Optional) `reorderLayer(id, toIndex)` → bounds-check move
+  - [ ] Persistence
+    - [ ] Keys: `localStorage['pb.project.<id>']`, `localStorage['pb.recentProjects']`
+    - [ ] `recentProjects`: `Array<{ id: string; name: string; updatedAt: number }>`; keep last 10
+    - [ ] (Note) Image pixel data is not persisted in Phase 3; UI shows placeholders when missing
+  - [ ] Selectors/helpers
+    - [ ] `selectProjectMeta(state)`; `selectLayerById(state, id)`; `isDirty(state)`
+    - [ ] Utility: `ensureUniqueLayerName(baseName)`
+  - [ ] UX bindings
+    - [ ] Add top-bar actions: New, Save, Open (from recents)
+    - [ ] Show dirty indicator in the title (e.g., `*`)
+    - [ ] Autosave after 2s debounce of changes; manual Save always available
 - [ ] AI jobs store
   - [ ] `AiJob`: `{ id: string; type: 'smile'|'inpaint'|'upscale'; status: 'queued'|'running'|'done'|'error'; startedAt?: number; endedAt?: number; error?: string }`
   - [ ] Hook `TaskGate.runExclusive` to push jobs and update status transitions
-  - [ ] Simple history view in UI (e.g., counter + last status)
-- [ ] Store location
-  - [ ] Place under `src/app/stores/{session,project,aiJobs}.ts`
-  - [ ] Export hooks `useSessionStore`, `useProjectStore`, `useAiJobsStore`
-  - [ ] No external state library; use Context + `useReducer` + `localStorage`
+  - [ ] History capped at 20; expose `lastError` and `runningCount`
 
 ### Definition of Done
 - [ ] Stores exist with typed shapes and are consumed by the page
 - [ ] Session persists across reload; role is reflected in UI
-- [ ] Project save/load round-trips with localStorage
-- [ ] AI jobs list updates as actions run
+- [ ] Project save/load round-trips with localStorage (metadata), recents list updates
+- [ ] AI jobs list updates as actions run; capped history maintained
 
 ---
 
@@ -112,14 +127,20 @@ Env: NEXT_PUBLIC_GEMINI_TIMEOUT=180000
   - [ ] Modal with fields: Name (1–60 chars), Width/Height (>0), DPI (>0)
   - [ ] Inline validation with helper validators (no new deps)
   - [ ] On submit, initialize `ProjectState` and clear images/UI filters
+  - [ ] Pre-fill last used canvas settings; default to 1024×1024 @ 96 DPI
+- [ ] Open/Save flows
+  - [ ] Open: list from `recentProjects` with search; open clears unsaved changes prompt if `dirty`
+  - [ ] Save As: duplicates current project with new `id` and `name`
 - [ ] Export settings
   - [ ] Select: `png | jpeg | webp`; `quality` for jpeg/webp
   - [ ] Validate: `dpi > 0`; type-specific options
   - [ ] Use settings in `handleDownload` (render-to-canvas path when filters active)
+  - [ ] Filename: `${project.name}-${timestamp}.${ext}`
 - [ ] Layer basics
   - [ ] Data model: `{ id, name, visible }`; enforce unique `name` per project
   - [ ] UI: list with add/delete, click-to-rename, visibility toggle
   - [ ] Rules: cannot delete sole base layer; clamp name length; prevent dupes
+  - [ ] (Optional) Reorder via drag handle or up/down buttons
 
 ### Definition of Done
 - [ ] New Project validates and creates state; errors are readable and accessible
@@ -148,18 +169,25 @@ Env: NEXT_PUBLIC_GEMINI_TIMEOUT=180000
 
 ## Phase 6 — Targets & Contracts
 - Stubs for OpenAPI and GraphQL contracts (paths only)
-- Route placeholders for /api/auth/* and /api/ai/*
+- Route placeholders for /api/auth/* and /api/ai/* and /api/projects/*
 
 ### Tasks
 - [ ] Contracts (stubs only)
-  - [ ] `contracts/openapi.yaml` with paths: `/api/auth/login`, `/api/auth/logout`, `/api/ai/generate`, `/api/ai/inpaint`, `/api/ai/upscale`, `/api/projects/*`
+  - [ ] `contracts/openapi.yaml`
+    - [ ] Paths: `/api/auth/login`, `/api/auth/logout`, `/api/ai/generate`, `/api/ai/inpaint`, `/api/ai/upscale`
+    - [ ] Project paths: `/api/projects` (GET list, POST create), `/api/projects/{id}` (GET, PUT replace, DELETE)
+    - [ ] Schemas: `Project`, `Layer`, `ProjectMeta`, `ErrorEnvelope { ok:boolean; error?:string }`
   - [ ] `contracts/schema.graphql` with basic `type Query`/`type Mutation` placeholders
+    - [ ] Query: `projects, project(id: ID!)`
+    - [ ] Mutation: `createProject, updateProject, deleteProject`
 - [ ] Routes (Next.js handlers)
   - [ ] `src/app/api/auth/login/route.ts` → 501 JSON stub
   - [ ] `src/app/api/auth/logout/route.ts` → 501 JSON stub
   - [ ] `src/app/api/ai/generate/route.ts` → alias or delegate to existing `src/app/api/generate/route.ts`
   - [ ] `src/app/api/ai/inpaint/route.ts` → 501 JSON stub
   - [ ] `src/app/api/ai/upscale/route.ts` → 501 JSON stub
+  - [ ] `src/app/api/projects/route.ts` → GET list, POST create (both 200 with stub data)
+  - [ ] `src/app/api/projects/[id]/route.ts` → GET one, PUT, DELETE (return stub with `{ ok: true }`)
 - [ ] Error envelope
   - [ ] Standardize `{ ok: boolean; error?: string }` for stubs and non-200 paths
 
@@ -207,7 +235,7 @@ Env: NEXT_PUBLIC_GEMINI_TIMEOUT=180000
 
 ### Tasks
 - [ ] application/framework/languages: Document versions (Next 15, React 19, MUI 6) in README
-- [ ] contracts: Add `contracts/openapi.yaml` and `contracts/schema.graphql` stubs
+- [ ] contracts: Add `contracts/openapi.yaml` and `contracts/schema.graphql` stubs (include `/api/projects` paths)
 - [ ] blueprints: Add `blueprints/` folder with `ui.json`, `flows.json` placeholders
 - [ ] stateModel: Stores created under `src/app/stores/` and types under `src/app/types/`
 - [ ] validationRules: `src/app/lib/validate.ts` helpers used by forms
@@ -231,3 +259,4 @@ Env: NEXT_PUBLIC_GEMINI_TIMEOUT=180000
 - [ ] Extract `dataURLtoFile` to `src/app/lib/image.ts` and reuse
 - [ ] Add `src/app/tokens.json` and consume primary color/spacing in `providers.tsx`
 - [ ] Add `/api/ai/generate` alias route delegating to existing `/api/generate` to stabilize paths
+- [ ] Add `/api/projects` and `/api/projects/[id]` stub handlers returning example payloads
