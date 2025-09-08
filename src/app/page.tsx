@@ -280,7 +280,7 @@ export default function Home() {
         <Box sx={{ flex: 1, p: 2, overflowY: "auto", bgcolor: "background.default" }}>
           <Grid container spacing={2}>
             {/* Original panel */}
-            <Grid xs={12} md={6}>
+            <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2, minHeight: 400, display: "flex", flexDirection: "column", gap: 2 }}>
                 <Typography variant="subtitle1" align="center" color="text.secondary">
                   Original
@@ -328,7 +328,7 @@ export default function Home() {
             </Grid>
 
             {/* Generated panel */}
-            <Grid xs={12} md={6}>
+            <Grid item xs={12} md={6}>
               <Paper sx={{ p: 2, minHeight: 400, display: "flex", flexDirection: "column", gap: 2 }}>
                 <Typography variant="subtitle1" align="center" color="text.secondary">
                   Generated
