@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import NextImage from "next/image";
 import { GoogleGenAI, Modality } from "@google/genai";
 
-// Utility to convert file to base64
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -27,7 +27,6 @@ const fileToGenerativePart = async (file: File) => {
   } as const;
 };
 
-// Utility to convert a data URL to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
   const arr = dataurl.split(",");
   const mimeMatch = arr[0].match(/:(.*?);/);
@@ -93,7 +92,6 @@ export default function Home() {
         setError(null);
       }
     }
-    // Reset the input value to allow uploading the same file again
     e.target.value = "";
   };
 
@@ -186,7 +184,6 @@ export default function Home() {
     const filtersAreActive = filterString.trim() !== "";
 
     if (!filtersAreActive) {
-      // Simple download for unfiltered images
       const link = document.createElement("a");
       link.href = URL.createObjectURL(file);
       link.download = file.name;
@@ -195,9 +192,7 @@ export default function Home() {
       document.body.removeChild(link);
       URL.revokeObjectURL(link.href);
     } else {
-      // Canvas-based download for filtered images
       const img = new Image();
-      // Required for cross-origin images on a canvas
       img.crossOrigin = "anonymous";
       img.onload = () => {
         const canvas = document.createElement("canvas");
@@ -246,7 +241,14 @@ export default function Home() {
               <div className="image-container">
                 {selectedImage ? (
                   <>
-                    <img src={selectedImage.url} alt="Original uploaded content" />
+                    <NextImage
+                      src={selectedImage.url}
+                      alt="Original uploaded content"
+                      fill
+                      unoptimized
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      style={{ objectFit: "contain" }}
+                    />
                     <button
                       className="download-button"
                       onClick={() => handleDownload(selectedImage.file, "")}
@@ -272,7 +274,14 @@ export default function Home() {
                 )}
                 {!loading && generatedImage ? (
                   <>
-                    <img src={generatedImage.url} alt="AI generated content" style={{ filter: getFilterString() }} />
+                    <Image
+                      src={generatedImage.url}
+                      alt="AI generated content"
+                      fill
+                      unoptimized
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      style={{ objectFit: "contain", filter: getFilterString() }}
+                    />
                     <button
                       className="download-button"
                       onClick={() => handleDownload(generatedImage.file, getFilterString())}
