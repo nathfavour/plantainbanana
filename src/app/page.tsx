@@ -22,6 +22,7 @@ import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import EditIcon from "@mui/icons-material/Edit";
 import TuneIcon from "@mui/icons-material/Tune";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import { useTaskGate } from "./task-gate";
 
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve, reject) => {
@@ -92,8 +93,8 @@ export default function Home() {
   }>({});
   const [filters, setFilters] = useState(initialFilterValues);
   const [prompt, setPrompt] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { busy, tryRunExclusive } = useTaskGate();
 
   useEffect(() => {
     setFilters(initialFilterValues);
@@ -127,11 +128,10 @@ export default function Home() {
     const currentImage = uploadedImages[selectedImageIndex];
     if (!currentImage) return;
 
-    setLoading(true);
     setError(null);
     setFilters(initialFilterValues);
 
-    try {
+    const started = tryRunExclusive(async () => {
       const form = new FormData();
       form.append("image", currentImage.file);
       form.append("prompt", prompt);
@@ -158,12 +158,16 @@ export default function Home() {
         ...prev,
         [selectedImageIndex!]: { url, file },
       }));
+    });
+
+    if (!started) return;
+
+    try {
+      await started;
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setError(`Error: ${message}`);
       console.error(e);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -327,8 +331,8 @@ export default function Home() {
                     borderRadius: 1,
                   }}
                 >
-                  {loading && <CircularProgress color="primary" />}
-                  {!loading && generatedImage ? (
+                  {busy && <CircularProgress color="primary" />}
+                  {!busy && generatedImage ? (
                     <>
                       <NextImage
                         src={generatedImage.url}
@@ -349,7 +353,7 @@ export default function Home() {
                       </IconButton>
                     </>
                   ) : (
-                    !loading && (
+                    !busy && (
                       <Stack alignItems="center" spacing={2}>
                         <AutoAwesomeIcon sx={{ fontSize: 48, color: "text.secondary" }} />
                         <Typography color="text.secondary">Your generated image will appear here</Typography>
@@ -386,24 +390,24 @@ export default function Home() {
                 placeholder="Describe your edits (e.g., 'add a birthday hat', 'make it a sunny day')..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                disabled={!selectedImage || loading}
+                disabled={!selectedImage || busy}
                 aria-label="Image edit prompt"
               />
               <Button
                 variant="contained"
                 startIcon={<AutoAwesomeIcon />}
                 onClick={handleGenerateClick}
-                disabled={!prompt || !selectedImage || loading}
+                disabled={!prompt || !selectedImage || busy}
                 sx={{ mt: 2 }}
               >
-                {loading ? "Generating..." : "Generate"}
+                {busy ? "Generating..." : "Generate"}
               </Button>
               {error && (
                 <Alert sx={{ mt: 2 }} severity="error" role="alert">{error}</Alert>
               )}
             </Paper>
 
-            {generatedImage && !loading && (
+            {generatedImage && !busy && (
               <Paper sx={{ p: 2 }}>
                 <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                   <TuneIcon fontSize="small" />
