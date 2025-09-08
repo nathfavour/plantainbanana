@@ -274,7 +274,7 @@ export default function Home() {
                 )}
                 {!loading && generatedImage ? (
                   <>
-                    <Image
+                    <NextImage
                       src={generatedImage.url}
                       alt="AI generated content"
                       fill
