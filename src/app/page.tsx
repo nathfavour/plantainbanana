@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import NextImage from "next/image";
-import { GoogleGenAI, Modality } from "@google/genai";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
@@ -133,49 +132,32 @@ export default function Home() {
     setFilters(initialFilterValues);
 
     try {
-      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-      if (!apiKey) throw new Error("Missing NEXT_PUBLIC_GEMINI_API_KEY");
-      const ai = new GoogleGenAI({ apiKey });
-      const imagePart = await fileToGenerativePart(currentImage.file);
+      const form = new FormData();
+      form.append("image", currentImage.file);
+      form.append("prompt", prompt);
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-image-preview",
-        contents: {
-          parts: [imagePart, { text: prompt }],
-        },
-        config: {
-          responseModalities: [Modality.IMAGE, Modality.TEXT],
-        },
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        body: form,
       });
 
-      const candidates = (response as any)?.candidates ?? [];
-      let imageFound = false;
-      for (const cand of candidates) {
-        const parts = cand?.content?.parts ?? [];
-        for (const part of parts) {
-          const inlineData = (part as any).inlineData as
-            | { data: string; mimeType: string }
-            | undefined;
-          if (inlineData) {
-            const { data, mimeType } = inlineData;
-            const url = `data:${mimeType};base64,${data}`;
-            const file = dataURLtoFile(
-              url,
-              `generated-${currentImage.file.name}`
-            );
-            setGeneratedImages((prev) => ({
-              ...prev,
-              [selectedImageIndex!]: { url, file },
-            }));
-            imageFound = true;
-            break;
-          }
-        }
-        if (imageFound) break;
+      if (!res.ok) {
+        let msg = `${res.status} ${res.statusText}`;
+        try {
+          const err = await res.json();
+          if (err?.error) msg = err.error;
+        } catch {}
+        throw new Error(msg);
       }
-      if (!imageFound) {
-        setError("Model did not return an image. Please try again.");
-      }
+
+      const json = (await res.json()) as { data: string; mimeType: string };
+      const url = `data:${json.mimeType};base64,${json.data}`;
+      const file = dataURLtoFile(url, `generated-${currentImage.file.name}`);
+
+      setGeneratedImages((prev) => ({
+        ...prev,
+        [selectedImageIndex!]: { url, file },
+      }));
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setError(`Error: ${message}`);
