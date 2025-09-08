@@ -3,6 +3,26 @@
 import React, { useEffect, useState } from "react";
 import NextImage from "next/image";
 import { GoogleGenAI, Modality } from "@google/genai";
+import AppBar from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
+import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
+import Paper from "@mui/material/Paper";
+import IconButton from "@mui/material/IconButton";
+import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
+import Slider from "@mui/material/Slider";
+import Stack from "@mui/material/Stack";
+import CircularProgress from "@mui/material/CircularProgress";
+import Alert from "@mui/material/Alert";
+import Grid from "@mui/material/Grid2";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import DownloadIcon from "@mui/icons-material/Download";
+import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import EditIcon from "@mui/icons-material/Edit";
+import TuneIcon from "@mui/icons-material/Tune";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 const fileToGenerativePart = async (file: File) => {
   const base64EncodedDataPromise = new Promise<string>((resolve, reject) => {
@@ -221,155 +241,220 @@ export default function Home() {
     selectedImageIndex !== null ? generatedImages[selectedImageIndex] : null;
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1>Plantainbananas Editor</h1>
-      </header>
-      <main className="main-layout">
-        <aside className="left-toolbar">
-          <label htmlFor="file-upload" className="tool-button active" aria-label="Upload Image">
-            <span className="material-icons">upload_file</span>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      <AppBar position="static" color="default" enableColorOnDark>
+        <Toolbar>
+          <Typography variant="h6" component="div">
+            Plantainbananas Editor
+          </Typography>
+        </Toolbar>
+      </AppBar>
+
+      <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
+        {/* Left toolbar */}
+        <Box
+          sx={{
+            width: 60,
+            bgcolor: "background.paper",
+            borderRight: 1,
+            borderColor: "divider",
+            p: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<UploadFileIcon />}
+            component="label"
+          >
             Upload
-          </label>
-          <input id="file-upload" type="file" accept="image/*" onChange={handleImageUpload} />
-        </aside>
+            <input hidden type="file" accept="image/*" onChange={handleImageUpload} />
+          </Button>
+        </Box>
 
-        <section className="canvas-area">
-          <div className="image-panels">
-            <div className="panel" aria-labelledby="original-image-heading">
-              <h2 id="original-image-heading">Original</h2>
-              <div className="image-container">
-                {selectedImage ? (
-                  <>
-                    <NextImage
-                      src={selectedImage.url}
-                      alt="Original uploaded content"
-                      fill
-                      unoptimized
-                      sizes="(max-width: 1024px) 100vw, 50vw"
-                      style={{ objectFit: "contain" }}
-                    />
-                    <button
-                      className="download-button"
-                      onClick={() => handleDownload(selectedImage.file, "")}
-                      aria-label="Download original image"
-                      title="Download original image"
-                    >
-                      <span className="material-icons">download</span>
-                    </button>
-                  </>
-                ) : (
-                  <div className="placeholder">
-                    <span className="material-icons">add_photo_alternate</span>
-                    <span>Upload an image to start</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="panel" aria-labelledby="generated-image-heading">
-              <h2 id="generated-image-heading">Generated</h2>
-              <div className="image-container">
-                {loading && (
-                  <div className="loader" role="status" aria-label="Loading generated image"></div>
-                )}
-                {!loading && generatedImage ? (
-                  <>
-                    <NextImage
-                      src={generatedImage.url}
-                      alt="AI generated content"
-                      fill
-                      unoptimized
-                      sizes="(max-width: 1024px) 100vw, 50vw"
-                      style={{ objectFit: "contain", filter: getFilterString() }}
-                    />
-                    <button
-                      className="download-button"
-                      onClick={() => handleDownload(generatedImage.file, getFilterString())}
-                      aria-label="Download generated image"
-                      title="Download generated image"
-                    >
-                      <span className="material-icons">download</span>
-                    </button>
-                  </>
-                ) : (
-                  !loading && (
-                    <div className="placeholder">
-                      <span className="material-icons">auto_awesome</span>
-                      <span>Your generated image will appear here</span>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* Canvas area */}
+        <Box sx={{ flex: 1, p: 2, overflowY: "auto", bgcolor: "background.default" }}>
+          <Grid container spacing={2}>
+            {/* Original panel */}
+            <Grid xs={12} md={6}>
+              <Paper sx={{ p: 2, minHeight: 400, display: "flex", flexDirection: "column", gap: 2 }}>
+                <Typography variant="subtitle1" align="center" color="text.secondary">
+                  Original
+                </Typography>
+                <Box
+                  sx={{
+                    position: "relative",
+                    flex: 1,
+                    minHeight: 300,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: "background.default",
+                    borderRadius: 1,
+                  }}
+                >
+                  {selectedImage ? (
+                    <>
+                      <NextImage
+                        src={selectedImage.url}
+                        alt="Original uploaded content"
+                        fill
+                        unoptimized
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                        style={{ objectFit: "contain" }}
+                      />
+                      <IconButton
+                        aria-label="Download original image"
+                        title="Download original image"
+                        onClick={() => handleDownload(selectedImage.file, "")}
+                        sx={{ position: "absolute", top: 8, right: 8 }}
+                        color="primary"
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    </>
+                  ) : (
+                    <Stack alignItems="center" spacing={2}>
+                      <AddPhotoAlternateIcon sx={{ fontSize: 48, color: "text.secondary" }} />
+                      <Typography color="text.secondary">Upload an image to start</Typography>
+                    </Stack>
+                  )}
+                </Box>
+              </Paper>
+            </Grid>
 
-        <aside className="right-sidebar">
-          <div className="sidebar-panel">
-            <h3>
-              <span className="material-icons">edit</span>
-              Generator
-            </h3>
-            <textarea
-              className="prompt-input"
-              placeholder="Describe your edits (e.g., 'add a birthday hat', 'make it a sunny day')..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              disabled={!selectedImage || loading}
-              aria-label="Image edit prompt"
-              rows={4}
-            />
-            <button
-              className="generate-button"
-              onClick={handleGenerateClick}
-              disabled={!prompt || !selectedImage || loading}
-            >
-              <span className="material-icons">auto_awesome</span>
-              {loading ? "Generating..." : "Generate"}
-            </button>
-            {error && (
-              <p className="error-message" role="alert">
-                {error}
-              </p>
+            {/* Generated panel */}
+            <Grid xs={12} md={6}>
+              <Paper sx={{ p: 2, minHeight: 400, display: "flex", flexDirection: "column", gap: 2 }}>
+                <Typography variant="subtitle1" align="center" color="text.secondary">
+                  Generated
+                </Typography>
+                <Box
+                  sx={{
+                    position: "relative",
+                    flex: 1,
+                    minHeight: 300,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: "background.default",
+                    borderRadius: 1,
+                  }}
+                >
+                  {loading && <CircularProgress color="primary" />}
+                  {!loading && generatedImage ? (
+                    <>
+                      <NextImage
+                        src={generatedImage.url}
+                        alt="AI generated content"
+                        fill
+                        unoptimized
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                        style={{ objectFit: "contain", filter: getFilterString() }}
+                      />
+                      <IconButton
+                        aria-label="Download generated image"
+                        title="Download generated image"
+                        onClick={() => handleDownload(generatedImage.file, getFilterString())}
+                        sx={{ position: "absolute", top: 8, right: 8 }}
+                        color="primary"
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    </>
+                  ) : (
+                    !loading && (
+                      <Stack alignItems="center" spacing={2}>
+                        <AutoAwesomeIcon sx={{ fontSize: 48, color: "text.secondary" }} />
+                        <Typography color="text.secondary">Your generated image will appear here</Typography>
+                      </Stack>
+                    )
+                  )}
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Box>
+
+        {/* Right sidebar */}
+        <Box
+          sx={{
+            width: 320,
+            p: 2,
+            bgcolor: "background.paper",
+            borderLeft: 1,
+            borderColor: "divider",
+            overflowY: "auto",
+          }}
+        >
+          <Stack spacing={2}>
+            <Paper sx={{ p: 2 }}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                <EditIcon fontSize="small" />
+                <Typography variant="subtitle1" fontWeight={600}>Generator</Typography>
+              </Stack>
+              <TextField
+                fullWidth
+                multiline
+                minRows={4}
+                placeholder="Describe your edits (e.g., 'add a birthday hat', 'make it a sunny day')..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                disabled={!selectedImage || loading}
+                aria-label="Image edit prompt"
+              />
+              <Button
+                variant="contained"
+                startIcon={<AutoAwesomeIcon />}
+                onClick={handleGenerateClick}
+                disabled={!prompt || !selectedImage || loading}
+                sx={{ mt: 2 }}
+              >
+                {loading ? "Generating..." : "Generate"}
+              </Button>
+              {error && (
+                <Alert sx={{ mt: 2 }} severity="error" role="alert">{error}</Alert>
+              )}
+            </Paper>
+
+            {generatedImage && !loading && (
+              <Paper sx={{ p: 2 }}>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                  <TuneIcon fontSize="small" />
+                  <Typography variant="subtitle1" fontWeight={600}>Adjustments</Typography>
+                </Stack>
+
+                <Stack spacing={2}>
+                  {filterConfig.map((filter) => (
+                    <Box key={filter.id}>
+                      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
+                        <Typography sx={{ minWidth: 80 }} color="text.secondary">{filter.name}</Typography>
+                        <Slider
+                          value={(filters as any)[filter.id as keyof typeof filters]}
+                          onChange={(_, val) => handleFilterChange(filter.id, String(val as number))}
+                          min={filter.min}
+                          max={filter.max}
+                          aria-labelledby={filter.id}
+                        />
+                        <Typography color="text.secondary" sx={{ minWidth: 48, textAlign: "right" }}>
+                          {(filters as any)[filter.id as keyof typeof filters]}{filter.unit}
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  ))}
+                  <Button variant="outlined" size="small" startIcon={<RefreshIcon />} onClick={resetFilters}>
+                    Reset
+                  </Button>
+                </Stack>
+              </Paper>
             )}
-          </div>
-
-          {generatedImage && !loading && (
-            <div className="sidebar-panel">
-              <h3>
-                <span className="material-icons">tune</span>
-                Adjustments
-              </h3>
-              <div className="filter-controls">
-                {filterConfig.map((filter) => (
-                  <div key={filter.id} className="filter-slider">
-                    <label htmlFor={filter.id}>{filter.name}</label>
-                    <input
-                      type="range"
-                      id={filter.id}
-                      name={filter.id}
-                      min={filter.min}
-                      max={filter.max}
-                      value={(filters as any)[filter.id as keyof typeof filters]}
-                      onChange={(e) => handleFilterChange(filter.id, e.target.value)}
-                    />
-                    <span>
-                      {(filters as any)[filter.id as keyof typeof filters]}
-                      {filter.unit}
-                    </span>
-                  </div>
-                ))}
-                <button onClick={resetFilters} className="reset-button">
-                  <span className="material-icons" style={{ fontSize: "16px" }}>
-                    refresh
-                  </span>
-                  Reset
-                </button>
-              </div>
-            </div>
-          )}
-        </aside>
-      </main>
-    </div>
+          </Stack>
+        </Box>
+      </Box>
+    </Box>
   );
 }
