@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
+import { TaskGateProvider } from "./task-gate";
 
 const theme = createTheme({
   palette: {
@@ -16,7 +17,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {children}
+      <TaskGateProvider>
+        {children}
+      </TaskGateProvider>
     </ThemeProvider>
   );
 }
